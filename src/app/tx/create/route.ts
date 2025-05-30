@@ -7,9 +7,7 @@ import { setCorsHeaders, handleOptionsRequest } from '../../../lib/cors';
 import type { AaveTransactionRequest } from '../../../types';
 
 function validateRequest(body: any): AaveTransactionRequest {
-  console.log(body);
   const { transactionType, tokenAddress, amount } = body.payload;
-  console.log(transactionType, tokenAddress, amount);
   
   if (!isValidTransactionType(transactionType)) {
     throw new Error(`Invalid transaction type. Supported: supply, withdraw, borrow, repay`);
@@ -46,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     const response = NextResponse.json({
       message: `Transaction created, ask the user to approve it in 15 minutes at ${pageUrl}`,
-      // success: true,
+      success: true,
       // pageUrl,
       // transactionId: id,
       // transactionType: request.transactionType
@@ -56,6 +54,7 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     const response = NextResponse.json({ 
+      success: false,
       error: error instanceof Error ? error.message : 'Failed to create transaction'
     }, { status: 400 });
     
