@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { storeTransaction } from '../../../lib/storage';
 import { isSupportedToken, isValidTransactionType } from '../../../lib/aave-config';
 import { createTransactionBuilder } from '../../../lib/transaction-builder';
+import { setCorsHeaders, handleOptionsRequest } from '../../../lib/cors';
 import type { AaveTransactionRequest } from '../../../types';
 
 function validateRequest(body: any): AaveTransactionRequest {
@@ -25,6 +26,11 @@ function validateRequest(body: any): AaveTransactionRequest {
   return { transactionType, tokenAddress, amount };
 }
 
+// 处理 OPTIONS 请求 (预检请求)
+export async function OPTIONS(req: NextRequest) {
+  return handleOptionsRequest();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -38,17 +44,21 @@ export async function POST(req: NextRequest) {
     const id = await storeTransaction(transactionData);
     const pageUrl = `${req.nextUrl.origin}/transaction/${id}`;
 
-    return NextResponse.json({
-      message: `Transaction created, ask the user to approve it at ${pageUrl}`
+    const response = NextResponse.json({
+      message: `Transaction created, ask the user to approve it at ${pageUrl}`,
       // success: true,
       // pageUrl,
       // transactionId: id,
       // transactionType: request.transactionType
     });
 
+    return setCorsHeaders(response);
+
   } catch (error) {
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       error: error instanceof Error ? error.message : 'Failed to create transaction'
     }, { status: 400 });
+    
+    return setCorsHeaders(response);
   }
 }

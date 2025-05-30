@@ -1,22 +1,11 @@
-// app/api/transaction/[id]/route.ts
-// import { NextRequest, NextResponse } from 'next/server';
-// import { getTransaction } from '../../../../lib/storage';
-
-// export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-//   try {
-//     const data = await getTransaction(params.id);
-//     if (!data) {
-//       return NextResponse.json({ error: 'Transaction not found or expired' }, { status: 404 });
-//     }
-//     return NextResponse.json({ success: true, data });
-//   } catch (error) {
-//     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-//   }
-// }
-
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getTransaction } from '../../../../lib/storage';
+import { setCorsHeaders, handleOptionsRequest } from '../../../../lib/cors';
+
+// 处理 OPTIONS 请求 (预检请求)
+export async function OPTIONS(req: NextRequest) {
+  return handleOptionsRequest();
+}
 
 export async function GET(
   req: NextRequest, 
@@ -25,11 +14,21 @@ export async function GET(
   try {
     const { id } = await params;
     const data = await getTransaction(id);
+    
     if (!data) {
-      return NextResponse.json({ error: 'Transaction not found or expired' }, { status: 404 });
+      const response = NextResponse.json({ 
+        error: 'Transaction not found or expired' 
+      }, { status: 404 });
+      return setCorsHeaders(response);
     }
-    return NextResponse.json({ success: true, data });
+    
+    const response = NextResponse.json({ success: true, data });
+    return setCorsHeaders(response);
+    
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const response = NextResponse.json({ 
+      error: 'Internal server error' 
+    }, { status: 500 });
+    return setCorsHeaders(response);
   }
 }
