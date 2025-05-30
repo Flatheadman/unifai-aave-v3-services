@@ -296,7 +296,7 @@ export default function TransactionPage({ params }: { params: Promise<{ id: stri
       {process.env.NODE_ENV === 'development' && (
         <div style={styles.debug}>
           <h4>🔧 Debug Info</h4>
-          <p><strong>Transaction ID:</strong> {params.id}</p>
+          <p><strong>Transaction ID:</strong> {id}</p>
           <p><strong>Transaction Type:</strong> {data.transactionType}</p>
           <p><strong>Contract:</strong> {data.contractAddress}</p>
           <p><strong>Function:</strong> {data.functionName}</p>
