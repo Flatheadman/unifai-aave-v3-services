@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     const pageUrl = `${req.nextUrl.origin}/transaction/${id}`;
 
     const response = NextResponse.json({
-      message: `Transaction created, ask the user to approve it at ${pageUrl}`,
+      message: `Transaction created, ask the user to approve it in 15 minutes at ${pageUrl}`,
       // success: true,
       // pageUrl,
       // transactionId: id,
