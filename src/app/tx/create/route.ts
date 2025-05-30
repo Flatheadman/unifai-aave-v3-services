@@ -6,7 +6,7 @@ import { createTransactionBuilder } from '../../../lib/transaction-builder';
 import type { AaveTransactionRequest } from '../../../types';
 
 function validateRequest(body: any): AaveTransactionRequest {
-  const { transactionType, tokenAddress, amount } = body.json.payload;
+  const { transactionType, tokenAddress, amount } = body.payload;
   
   if (!isValidTransactionType(transactionType)) {
     throw new Error(`Invalid transaction type. Supported: supply, withdraw, borrow, repay`);
