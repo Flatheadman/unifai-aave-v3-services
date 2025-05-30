@@ -1,4 +1,3 @@
-// app/tx/[id]/page.tsx
 'use client';
 
 import { useEffect, useState, use } from 'react';
@@ -60,10 +59,83 @@ class SupplyExecutor extends TransactionExecutor {
   }
 }
 
-// TODO: 其他执行器在后续添加
-// class WithdrawExecutor extends TransactionExecutor { ... }
-// class BorrowExecutor extends TransactionExecutor { ... }
-// class RepayExecutor extends TransactionExecutor { ... }
+// Withdraw 执行器
+class WithdrawExecutor extends TransactionExecutor {
+  async needsApproval(): Promise<boolean> {
+    // Withdraw 不需要 approval，因为是从 aToken 中提取
+    return false;
+  }
+
+  async executeApproval(): Promise<string> {
+    throw new Error('Withdraw does not require approval');
+  }
+
+  async executeTransaction(): Promise<string> {
+    const poolContract = new ethers.Contract(AAVE_V3_SEPOLIA.POOL, AAVE_POOL_ABI, this.wallet.signer);
+    
+    const tx = await poolContract.withdraw(
+      this.data.params[0],     // asset
+      this.data.params[1],     // amount
+      this.wallet.address      // to
+    );
+    
+    return tx.hash;
+  }
+}
+
+// Borrow 执行器
+class BorrowExecutor extends TransactionExecutor {
+  async needsApproval(): Promise<boolean> {
+    // Borrow 不需要 approval
+    return false;
+  }
+
+  async executeApproval(): Promise<string> {
+    throw new Error('Borrow does not require approval');
+  }
+
+  async executeTransaction(): Promise<string> {
+    const poolContract = new ethers.Contract(AAVE_V3_SEPOLIA.POOL, AAVE_POOL_ABI, this.wallet.signer);
+    
+    const tx = await poolContract.borrow(
+      this.data.params[0],     // asset
+      this.data.params[1],     // amount
+      this.data.params[2],     // interestRateMode
+      this.data.params[3],     // referralCode
+      this.wallet.address      // onBehalfOf
+    );
+    
+    return tx.hash;
+  }
+}
+
+// Repay 执行器
+class RepayExecutor extends TransactionExecutor {
+  async needsApproval(): Promise<boolean> {
+    const tokenContract = new ethers.Contract(this.data.params[0], ERC20_ABI, this.wallet.provider);
+    const allowance = await tokenContract.allowance(this.wallet.address, AAVE_V3_SEPOLIA.POOL);
+    return allowance < BigInt(this.data.params[1]);
+  }
+
+  async executeApproval(): Promise<string> {
+    const tokenContract = new ethers.Contract(this.data.params[0], ERC20_ABI, this.wallet.signer);
+    const tx = await tokenContract.approve(AAVE_V3_SEPOLIA.POOL, this.data.params[1]);
+    return tx.hash;
+  }
+
+  async executeTransaction(): Promise<string> {
+    const poolContract = new ethers.Contract(AAVE_V3_SEPOLIA.POOL, AAVE_POOL_ABI, this.wallet.signer);
+    
+    const tx = await poolContract.repay(
+      this.data.params[0],     // asset
+      this.data.params[1],     // amount
+      this.data.params[2],     // interestRateMode
+      this.wallet.address      // onBehalfOf
+    );
+    
+    return tx.hash;
+  }
+}
 
 // 执行器工厂
 function createExecutor(wallet: any, data: TransactionData): TransactionExecutor {
@@ -71,11 +143,11 @@ function createExecutor(wallet: any, data: TransactionData): TransactionExecutor
     case 'supply':
       return new SupplyExecutor(wallet, data);
     case 'withdraw':
-      throw new Error('Withdraw transaction not implemented yet');
+      return new WithdrawExecutor(wallet, data);
     case 'borrow':
-      throw new Error('Borrow transaction not implemented yet');
+      return new BorrowExecutor(wallet, data);
     case 'repay':
-      throw new Error('Repay transaction not implemented yet');
+      return new RepayExecutor(wallet, data);
     default:
       throw new Error(`Unsupported transaction type: ${data.transactionType}`);
   }
@@ -98,7 +170,6 @@ export default function TransactionPage({ params }: { params: Promise<{ id: stri
       .then(res => res.json())
       .then(result => {
         if (result.success) {
-          // console.log('Transaction data:', result.data);
           setData(result.data);
         } else {
           setError(result.error);
@@ -310,7 +381,7 @@ export default function TransactionPage({ params }: { params: Promise<{ id: stri
   );
 }
 
-// 样式
+// 样式保持不变
 const styles = {
   container: {
     maxWidth: '600px',
