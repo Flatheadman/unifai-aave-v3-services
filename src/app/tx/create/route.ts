@@ -6,7 +6,9 @@ import { createTransactionBuilder } from '../../../lib/transaction-builder';
 import type { AaveTransactionRequest } from '../../../types';
 
 function validateRequest(body: any): AaveTransactionRequest {
+  // console.log(body);
   const { transactionType, tokenAddress, amount } = body.payload;
+  // console.log(transactionType, tokenAddress, amount);
   
   if (!isValidTransactionType(transactionType)) {
     throw new Error(`Invalid transaction type. Supported: supply, withdraw, borrow, repay`);
@@ -25,7 +27,9 @@ function validateRequest(body: any): AaveTransactionRequest {
 
 export async function POST(req: NextRequest) {
   try {
-    const request = validateRequest(await req.json());
+    const body = await req.json();
+    // console.log('Received body:', body);
+    const request = validateRequest(body);
     
     // 使用工厂创建对应的交易构建器
     const builder = createTransactionBuilder(request);
