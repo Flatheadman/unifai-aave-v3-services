@@ -143,7 +143,6 @@ class MemoryStorage {
     this.store.delete(key);
   }
 
-  // 开发环境调试用
   getAllKeys(): string[] {
     const now = Date.now();
     const validKeys: string[] = [];
@@ -152,7 +151,7 @@ class MemoryStorage {
       if (!item.expireAt || now < item.expireAt) {
         validKeys.push(key);
       } else {
-        this.store.delete(key); // 顺便清理过期项
+        this.store.delete(key);
       }
     }
     
@@ -189,43 +188,67 @@ class RedisStorage {
   }
 }
 
-// 选择存储方式
-function createStorage() {
+// 延迟初始化存储实例
+let storageInstance: MemoryStorage | RedisStorage | null = null;
+
+function getStorage() {
+  if (storageInstance) {
+    return storageInstance;
+  }
+
+  // 检查是否在生产环境
   const isProduction = process.env.VERCEL || process.env.NODE_ENV === 'production';
   
   if (isProduction) {
-    console.log('Using Upstash Redis storage');
-    const { Redis } = require('@upstash/redis');
+    // 使用 Vercel 集成的 Upstash 环境变量名
+    const redisUrl = process.env.KV_REST_API_URL;
+    const redisToken = process.env.KV_REST_API_TOKEN;
     
-    // 创建 Redis 客户端
-    const redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-    });
-    
-    return new RedisStorage(redis);
+    if (!redisUrl || !redisToken) {
+      console.warn('Redis environment variables not found, falling back to memory storage');
+      console.warn('Expected: KV_REST_API_URL and KV_REST_API_TOKEN');
+      storageInstance = new MemoryStorage();
+      return storageInstance;
+    }
+
+    try {
+      console.log('Using Upstash Redis storage');
+      const { Redis } = require('@upstash/redis');
+      
+      const redis = new Redis({
+        url: redisUrl,
+        token: redisToken,
+      });
+      
+      storageInstance = new RedisStorage(redis);
+    } catch (error) {
+      console.error('Failed to initialize Redis, falling back to memory storage:', error);
+      storageInstance = new MemoryStorage();
+    }
   } else {
     console.log('Using memory storage (development)');
-    return new MemoryStorage();
+    storageInstance = new MemoryStorage();
   }
-}
 
-// 存储实例
-const storage = createStorage();
+  return storageInstance;
+}
 
 // 公共接口
 export const storeTransaction = async (data: TransactionData): Promise<string> => {
+  const storage = getStorage();
   const id = Math.random().toString(36).substring(2, 10);
   await storage.set(`tx:${id}`, JSON.stringify(data), 900); // 15分钟
   return id;
 };
 
 export const getTransaction = async (id: string): Promise<TransactionData | null> => {
+  const storage = getStorage();
   const data = await storage.get(`tx:${id}`);
   return data ? JSON.parse(data) : null;
 };
 
 export const deleteTransaction = async (id: string): Promise<void> => {
+  const storage = getStorage();
   await storage.del(`tx:${id}`);
 };
 
@@ -233,6 +256,7 @@ export const deleteTransaction = async (id: string): Promise<void> => {
 export const devGetAllTransactions = async (): Promise<Array<{id: string, data: TransactionData}>> => {
   if (process.env.NODE_ENV === 'production') return [];
   
+  const storage = getStorage();
   if (storage instanceof MemoryStorage) {
     const keys = storage.getAllKeys().filter(key => key.startsWith('tx:'));
     const transactions = [];
@@ -258,8 +282,9 @@ export const devClearAll = async (): Promise<number> => {
   
   const transactions = await devGetAllTransactions();
   for (const tx of transactions) {
-    await storage.del(`tx:${tx.id}`);
+    await deleteTransaction(tx.id);
   }
   
   return transactions.length;
 };
+
