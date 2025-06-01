@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTransaction } from '../../../../lib/storage';
-import { setCorsHeaders, handleOptionsRequest } from '../../../../lib/cors';
+import { getTransaction } from '../../../../../lib/storage';
+import { setCorsHeaders, handleOptionsRequest } from '../../../../../lib/cors';
 
 // 处理 OPTIONS 请求 (预检请求)
 export async function OPTIONS(req: NextRequest) {

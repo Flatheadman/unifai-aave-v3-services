@@ -166,7 +166,7 @@ export default function TransactionPage({ params }: { params: Promise<{ id: stri
 
   // 加载交易数据
   useEffect(() => {
-    fetch(`/tx/data/${id}`)
+    fetch(`/api/tx/data/${id}`)
       .then(res => res.json())
       .then(result => {
         if (result.success) {
