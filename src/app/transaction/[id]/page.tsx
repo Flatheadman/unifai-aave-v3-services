@@ -212,12 +212,13 @@ export default function TransactionPage({ params }: { params: Promise<{ id: stri
       
       // 检查并处理授权
       const config = TRANSACTION_CONFIGS[data.transactionType];
+      let approveTxHash = '';
       if (config.requiresApproval) {
         setStatus('approving');
         const needsApproval = await executor.needsApproval();
         
         if (needsApproval) {
-          const approveTxHash = await executor.executeApproval();
+          approveTxHash = await executor.executeApproval();
           setApprovalTxHash(approveTxHash);
           
           // 等待授权交易确认
@@ -233,6 +234,29 @@ export default function TransactionPage({ params }: { params: Promise<{ id: stri
       // 等待主交易确认
       await wallet.provider.waitForTransaction(mainTxHash);
       setStatus('success');
+
+      //修改交易状态
+      try {
+        const confirmRes = await fetch(`/api/tx/confirm/${id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            txHash: mainTxHash, 
+            approvalTxHash: approveTxHash
+          }),
+        });
+        if (!confirmRes.ok) {
+          const confirmError = await confirmRes.json();
+          console.warn('Failed to confirm transaction with backend:', confirmError.error || confirmRes.statusText);
+          // Optionally, set a non-critical error message for the user
+        } else {
+          console.log('Transaction confirmed with backend successfully.');
+        }
+      } catch (confirmApiError) {
+        console.warn('Error calling confirmation API:', confirmApiError);
+      }
       
     } catch (err: any) {
       console.error('Transaction execution failed:', err);
